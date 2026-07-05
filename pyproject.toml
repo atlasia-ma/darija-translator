@@ -1,5 +1,5 @@
 [project]
-name = "darija-translation"
+name = "darija-translator"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
