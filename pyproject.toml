@@ -13,6 +13,11 @@ dev = [
 eval = [
     "sacrebleu>=2.4",
 ]
+train = [
+    "datasets>=4.3.0",
+    "trl>=0.24.0",
+    "unsloth>=2026.6.9",
+]
 
 [project.scripts]
 darija-translator = "darija_translator.cli:main"
