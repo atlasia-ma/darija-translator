@@ -38,7 +38,11 @@ def to_conversations(batch: dict, config: DataConfig):
 
 def format_conversations(examples: dict,
                          tokenizer: ChatTemplateTokenizer) -> dict:
-    texts = tokenizer.apply_chat_template(examples["conversations"],
-                                          tokenize=False,
-                                          add_generation_prompt=False)
+    texts = tokenizer.apply_chat_template(
+        examples["conversations"],
+        tokenize=False,
+        add_generation_prompt=False,
+    )
+    if not tokenizer.bos_token:
+        return {"text": texts}
     return {"text": [x.removeprefix(tokenizer.bos_token) for x in texts]}
