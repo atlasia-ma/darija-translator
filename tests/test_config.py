@@ -19,3 +19,13 @@ def test_data_config_default_max_text_length():
 def test_data_config_max_text_length_is_overridable():
     cfg = DataConfig(max_text_length=500)
     assert cfg.max_text_length == 500
+
+
+def test_data_config_default_test_size():
+    cfg = DataConfig()
+    assert cfg.test_size == 0.1
+
+
+def test_data_config_default_seed():
+    cfg = DataConfig()
+    assert cfg.seed == 3407

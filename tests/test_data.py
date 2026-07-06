@@ -1,5 +1,5 @@
 from darija_translator.config import DataConfig
-from darija_translator.data import to_conversations, format_conversations, is_within_length, is_darija_script
+from darija_translator.data import to_conversations, format_conversations, is_within_length, is_darija_script, split_dataset
 
 
 class FakeTokenizer:
@@ -15,6 +15,16 @@ class FakeTokenizer:
                                      for turn in convo)
             for convo in conversations
         ]
+
+
+class FakeDataset:
+
+    def __init__(self):
+        self.received_kwargs = None
+
+    def train_test_split(self, **kwargs):
+        self.received_kwargs = kwargs
+        return {"train": "train_split", "test": "test_split"}
 
 
 def test_to_conversations_builds_system_user_assistant_turns():
@@ -148,8 +158,8 @@ def test_is_darija_script_accepts_both():
 def test_is_darija_script_rejects_other_script_types():
     example = {"script_type": "latin"}
     assert is_darija_script(example) is False
-    
-    
+
+
 def test_is_within_length_accepts_text_under_limit():
     example = {"text": "short text"}
     config = DataConfig(max_text_length=2000)
@@ -166,3 +176,13 @@ def test_is_within_length_accepts_text_exactly_at_limit():
     example = {"text": "x" * 2000}
     config = DataConfig(max_text_length=2000)
     assert is_within_length(example, config) is True
+
+
+def test_split_dataset_passes_config_values_through():
+    dataset = FakeDataset()
+    config = DataConfig(test_size=0.2, seed=42)
+
+    result = split_dataset(dataset, config)
+
+    assert dataset.received_kwargs == {"test_size": 0.2, "seed": 42}
+    assert result == ("train_split", "test_split")
