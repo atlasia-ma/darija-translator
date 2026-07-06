@@ -50,6 +50,13 @@ def format_conversations(examples: dict,
 
 def is_darija_script(example: dict) -> bool:
     return example.get("script_type") in ["darija", "both"]
-  
+
+
 def is_within_length(example: dict, config: DataConfig) -> bool:
     return len(example["text"]) <= config.max_text_length
+
+
+def split_dataset(dataset, config: DataConfig) -> tuple:
+    split = dataset.train_test_split(test_size=config.test_size,
+                                     seed=config.seed)
+    return split["train"], split["test"]
