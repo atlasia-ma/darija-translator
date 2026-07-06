@@ -1,5 +1,5 @@
 from darija_translator.config import DataConfig
-from darija_translator.data import to_conversations, format_conversations
+from darija_translator.data import to_conversations, format_conversations, is_darija_script
 
 
 class FakeTokenizer:
@@ -133,3 +133,18 @@ def test_format_conversations_handles_tokenizer_without_bos_token():
     result = format_conversations(examples, NoBosTokenizer())
 
     assert result["text"][0] == "[user]Hi"
+
+
+def test_is_darija_script_accepts_darija():
+    example = {"script_type": "darija"}
+    assert is_darija_script(example) is True
+
+
+def test_is_darija_script_accepts_both():
+    example = {"script_type": "both"}
+    assert is_darija_script(example) is True
+
+
+def test_is_darija_script_rejects_other_script_types():
+    example = {"script_type": "latin"}
+    assert is_darija_script(example) is False
