@@ -8,7 +8,7 @@ from darija_translator.config import TrainConfig
 
 def build_trainer(model, tokenizer, train_dataset, eval_dataset,
                   config: TrainConfig):
-    if config.report_to == "wandb":
+    if config.report_to == "wandb" or (isinstance(config.report_to, list) and "wandb" in config.report_to):
         os.environ["WANDB_PROJECT"] = config.wandb_project
 
     trainer = SFTTrainer(
