@@ -1,5 +1,5 @@
 from darija_translator.config import DataConfig
-from darija_translator.data import to_conversations, format_conversations
+from darija_translator.data import to_conversations, format_conversations, is_within_length
 
 
 class FakeTokenizer:
@@ -133,3 +133,21 @@ def test_format_conversations_handles_tokenizer_without_bos_token():
     result = format_conversations(examples, NoBosTokenizer())
 
     assert result["text"][0] == "[user]Hi"
+
+
+def test_is_within_length_accepts_text_under_limit():
+    example = {"text": "short text"}
+    config = DataConfig(max_text_length=2000)
+    assert is_within_length(example, config) is True
+
+
+def test_is_within_length_rejects_text_over_limit():
+    example = {"text": "x" * 2001}
+    config = DataConfig(max_text_length=2000)
+    assert is_within_length(example, config) is False
+
+
+def test_is_within_length_accepts_text_exactly_at_limit():
+    example = {"text": "x" * 2000}
+    config = DataConfig(max_text_length=2000)
+    assert is_within_length(example, config) is True
