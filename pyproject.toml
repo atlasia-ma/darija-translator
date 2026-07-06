@@ -10,6 +10,9 @@ dependencies = []
 dev = [
     "pytest>=9.1.1",
 ]
+eval = [
+    "sacrebleu>=2.4",
+]
 
 [build-system]
 requires = ["hatchling"]
