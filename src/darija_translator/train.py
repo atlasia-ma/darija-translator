@@ -1,3 +1,5 @@
+import os
+
 from trl import SFTConfig, SFTTrainer
 from unsloth.chat_templates import train_on_responses_only
 
@@ -6,6 +8,9 @@ from darija_translator.config import TrainConfig
 
 def build_trainer(model, tokenizer, train_dataset, eval_dataset,
                   config: TrainConfig):
+    if config.report_to == "wandb":
+        os.environ["WANDB_PROJECT"] = config.wandb_project
+
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
@@ -27,7 +32,7 @@ def build_trainer(model, tokenizer, train_dataset, eval_dataset,
             weight_decay=config.weight_decay,
             lr_scheduler_type=config.lr_scheduler_type,
             seed=config.seed,
-            report_to="none",
+            report_to=config.report_to,
             group_by_length=config.group_by_length,
         ),
     )
@@ -36,8 +41,3 @@ def build_trainer(model, tokenizer, train_dataset, eval_dataset,
         instruction_part="<|im_start|>user\n",
         response_part="<|im_start|>assistant\n",
     )
-
-
-def save_model(model, tokenizer, config: TrainConfig):
-    model.save_pretrained(config.output_dir)
-    tokenizer.save_pretrained(config.output_dir)
