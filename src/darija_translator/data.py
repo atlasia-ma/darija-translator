@@ -48,5 +48,8 @@ def format_conversations(examples: dict,
     return {"text": [x.removeprefix(tokenizer.bos_token) for x in texts]}
 
 
+def is_darija_script(example: dict) -> bool:
+    return example.get("script_type") in ["darija", "both"]
+  
 def is_within_length(example: dict, config: DataConfig) -> bool:
     return len(example["text"]) <= config.max_text_length

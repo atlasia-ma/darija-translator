@@ -1,5 +1,5 @@
 from darija_translator.config import DataConfig
-from darija_translator.data import to_conversations, format_conversations, is_within_length
+from darija_translator.data import to_conversations, format_conversations, is_within_length, is_darija_script
 
 
 class FakeTokenizer:
@@ -135,6 +135,21 @@ def test_format_conversations_handles_tokenizer_without_bos_token():
     assert result["text"][0] == "[user]Hi"
 
 
+def test_is_darija_script_accepts_darija():
+    example = {"script_type": "darija"}
+    assert is_darija_script(example) is True
+
+
+def test_is_darija_script_accepts_both():
+    example = {"script_type": "both"}
+    assert is_darija_script(example) is True
+
+
+def test_is_darija_script_rejects_other_script_types():
+    example = {"script_type": "latin"}
+    assert is_darija_script(example) is False
+    
+    
 def test_is_within_length_accepts_text_under_limit():
     example = {"text": "short text"}
     config = DataConfig(max_text_length=2000)
