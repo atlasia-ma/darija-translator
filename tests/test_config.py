@@ -40,7 +40,7 @@ def test_model_config_defaults():
     assert cfg.lora_alpha == 16
     assert cfg.lora_dropout == 0
     assert cfg.random_state == 3407
-    assert cfg.target_modules == [
+    assert cfg.target_modules == (
         "q_proj",
         "k_proj",
         "v_proj",
@@ -49,4 +49,4 @@ def test_model_config_defaults():
         "w1",
         "w2",
         "w3",
-    ]
+    )
