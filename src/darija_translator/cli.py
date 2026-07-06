@@ -13,6 +13,9 @@ from darija_translator.data import (
 from darija_translator.evaluate import compute_translation_metrics, generate_translations
 from darija_translator.model import attach_lora, load_model_and_tokenizer
 from darija_translator.train import build_trainer, save_model
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def prepare_data(dataset_name: str, data_config: DataConfig, tokenizer):
