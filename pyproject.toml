@@ -14,6 +14,9 @@ eval = [
     "sacrebleu>=2.4",
 ]
 
+[project.scripts]
+darija-translator = "darija_translator.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
