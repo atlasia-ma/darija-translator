@@ -1,4 +1,4 @@
-from darija_translator.config import DataConfig, ModelConfig
+from darija_translator.config import DataConfig, ModelConfig, TrainConfig
 
 
 def test_data_config_default_system_prompt():
@@ -50,3 +50,11 @@ def test_model_config_defaults():
         "w2",
         "w3",
     )
+
+
+def test_train_config_defaults():
+    cfg = TrainConfig()
+    assert cfg.per_device_train_batch_size == 16
+    assert cfg.num_train_epochs == 3
+    assert cfg.learning_rate == 2e-4
+    assert cfg.seed == 3407
