@@ -1,5 +1,19 @@
 from darija_translator.config import DataConfig
 
+from typing import Protocol
+
+
+class ChatTemplateTokenizer(Protocol):
+    bos_token: str
+
+    def apply_chat_template(
+        self,
+        conversations: list,
+        tokenize: bool,
+        add_generation_prompt: bool,
+    ) -> list[str]:
+        ...
+
 
 def to_conversations(batch: dict, config: DataConfig):
 
@@ -20,3 +34,11 @@ def to_conversations(batch: dict, config: DataConfig):
             },
         ])
     return {"conversations": conversations}
+
+
+def format_conversations(examples: dict,
+                         tokenizer: ChatTemplateTokenizer) -> dict:
+    texts = tokenizer.apply_chat_template(examples["conversations"],
+                                          tokenize=False,
+                                          add_generation_prompt=False)
+    return {"text": [x.removeprefix(tokenizer.bos_token) for x in texts]}
