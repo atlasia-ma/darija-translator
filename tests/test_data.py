@@ -1,5 +1,20 @@
 from darija_translator.config import DataConfig
-from darija_translator.data import to_conversations
+from darija_translator.data import to_conversations, format_conversations
+
+
+class FakeTokenizer:
+    bos_token = "<bos>"
+
+    def apply_chat_template(self,
+                            conversations,
+                            tokenize=False,
+                            add_generation_prompt=False):
+        # mimic real behavior: one formatted string per conversation, bos-prefixed
+        return [
+            self.bos_token + "".join(f"[{turn['role']}]{turn['content']}"
+                                     for turn in convo)
+            for convo in conversations
+        ]
 
 
 def test_to_conversations_builds_system_user_assistant_turns():
@@ -41,3 +56,59 @@ def test_to_conversations_handles_multiple_pairs():
     result = to_conversations(batch, config)
 
     assert len(result["conversations"]) == 2
+
+
+def test_format_conversations_returns_text_field():
+    examples = {
+        "conversations": [[{
+            "role": "user",
+            "content": "Hi"
+        }, {
+            "role": "assistant",
+            "content": "Salam"
+        }]]
+    }
+    tokenizer = FakeTokenizer()
+
+    result = format_conversations(examples, tokenizer)
+
+    assert "text" in result
+    assert len(result["text"]) == 1
+
+
+def test_format_conversations_strips_bos_token_prefix():
+    examples = {
+        "conversations": [[{
+            "role": "user",
+            "content": "Hi"
+        }, {
+            "role": "assistant",
+            "content": "Salam"
+        }]]
+    }
+    tokenizer = FakeTokenizer()
+
+    result = format_conversations(examples, tokenizer)
+
+    assert not result["text"][0].startswith(tokenizer.bos_token)
+    assert result["text"][0] == "[user]Hi[assistant]Salam"
+
+
+def test_format_conversations_handles_multiple_examples():
+    examples = {
+        "conversations": [
+            [{
+                "role": "user",
+                "content": "Hi"
+            }],
+            [{
+                "role": "user",
+                "content": "Bye"
+            }],
+        ]
+    }
+    tokenizer = FakeTokenizer()
+
+    result = format_conversations(examples, tokenizer)
+
+    assert len(result["text"]) == 2
