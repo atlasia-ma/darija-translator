@@ -1,4 +1,4 @@
-from darija_translator.config import DataConfig
+from darija_translator.config import DataConfig, ModelConfig
 
 
 def test_data_config_default_system_prompt():
@@ -29,3 +29,24 @@ def test_data_config_default_test_size():
 def test_data_config_default_seed():
     cfg = DataConfig()
     assert cfg.seed == 3407
+
+
+def test_model_config_defaults():
+    cfg = ModelConfig()
+    assert cfg.model_name == "LiquidAI/LFM2.5-230M"
+    assert cfg.max_seq_length == 2048
+    assert cfg.load_in_16bit is True
+    assert cfg.lora_r == 16
+    assert cfg.lora_alpha == 16
+    assert cfg.lora_dropout == 0
+    assert cfg.random_state == 3407
+    assert cfg.target_modules == [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "out_proj",
+        "in_proj",
+        "w1",
+        "w2",
+        "w3",
+    ]
