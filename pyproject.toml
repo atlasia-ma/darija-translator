@@ -17,6 +17,8 @@ train = [
     "datasets>=4.3.0",
     "trl>=0.24.0",
     "unsloth>=2026.6.9",
+    "wandb>=0.19",
+    "python-dotenv>=1.0",
 ]
 
 [project.scripts]

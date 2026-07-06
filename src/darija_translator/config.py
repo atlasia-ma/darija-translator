@@ -47,3 +47,5 @@ class TrainConfig:
     group_by_length: bool = True
     max_seq_length: int = 2048
     output_dir: str = "lora_model"
+    report_to: str = "wandb"
+    wandb_project: str = "darija-translator"
