@@ -46,3 +46,7 @@ def format_conversations(examples: dict,
     if not tokenizer.bos_token:
         return {"text": texts}
     return {"text": [x.removeprefix(tokenizer.bos_token) for x in texts]}
+
+
+def is_darija_script(example: dict) -> bool:
+    return example.get("script_type") in ["darija", "both"]
