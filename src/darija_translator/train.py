@@ -41,3 +41,8 @@ def build_trainer(model, tokenizer, train_dataset, eval_dataset,
         instruction_part="<|im_start|>user\n",
         response_part="<|im_start|>assistant\n",
     )
+
+
+def save_model(model, tokenizer, config: TrainConfig):
+    model.save_pretrained(config.output_dir)
+    tokenizer.save_pretrained(config.output_dir)
