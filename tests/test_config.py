@@ -58,3 +58,9 @@ def test_train_config_defaults():
     assert cfg.num_train_epochs == 3
     assert cfg.learning_rate == 2e-4
     assert cfg.seed == 3407
+
+
+def test_train_config_wandb_defaults():
+    cfg = TrainConfig()
+    assert cfg.report_to == "wandb"
+    assert cfg.wandb_project == "darija-translator"
