@@ -50,3 +50,6 @@ def format_conversations(examples: dict,
 
 def is_darija_script(example: dict) -> bool:
     return example.get("script_type") in ["darija", "both"]
+  
+def is_within_length(example: dict, config: DataConfig) -> bool:
+    return len(example["text"]) <= config.max_text_length
