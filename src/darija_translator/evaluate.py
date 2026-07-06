@@ -30,10 +30,12 @@ def generate_translations(model, tokenizer, sources: list[str],
             return_tensors="pt",
             return_dict=True,
         ).to(model.device)
+        input_len = inputs["input_ids"].shape[1]
         outputs = model.generate(**inputs,
                                  max_new_tokens=128,
-                                 temperature=0.7,
+                                 do_sample=False,
                                  use_cache=True)
-        decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        new_tokens = outputs[:, input_len:]
+        decoded = tokenizer.batch_decode(new_tokens, skip_special_tokens=True)
         predictions.append(decoded[0])
     return predictions
