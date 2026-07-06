@@ -28,7 +28,7 @@ and GPU, verified instead via manual smoke-test scripts in `scripts/`.
 
 For training/evaluation on GPU, also install:
 
-    uv sync --group train
+    uv sync --group dev --group eval --group train
 
 ### W&B tracking
 
