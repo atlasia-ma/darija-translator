@@ -112,3 +112,24 @@ def test_format_conversations_handles_multiple_examples():
     result = format_conversations(examples, tokenizer)
 
     assert len(result["text"]) == 2
+
+
+def test_format_conversations_handles_tokenizer_without_bos_token():
+
+    class NoBosTokenizer(FakeTokenizer):
+        bos_token = None
+
+        def apply_chat_template(self,
+                                conversations,
+                                tokenize=False,
+                                add_generation_prompt=False):
+            return [
+                "".join(f"[{t['role']}]{t['content']}" for t in convo)
+                for convo in conversations
+            ]
+
+    examples = {"conversations": [[{"role": "user", "content": "Hi"}]]}
+
+    result = format_conversations(examples, NoBosTokenizer())
+
+    assert result["text"][0] == "[user]Hi"
