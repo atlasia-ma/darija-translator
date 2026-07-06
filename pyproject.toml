@@ -4,11 +4,7 @@ version = "0.1.0"
 description = "Fine-tuning LFM2.5 for English-Darija translation"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "datasets>=4.3.0",
-    "trl>=0.24.0",
-    "unsloth>=2026.6.9",
-]
+dependencies = []
 
 [dependency-groups]
 dev = [
@@ -16,6 +12,11 @@ dev = [
 ]
 eval = [
     "sacrebleu>=2.4",
+]
+train = [
+    "datasets>=4.3.0",
+    "trl>=0.24.0",
+    "unsloth>=2026.6.9",
 ]
 
 [project.scripts]
