@@ -11,14 +11,14 @@ dev = [
     "pytest>=9.1.1",
 ]
 eval = [
-    "sacrebleu>=2.4",
+    "sacrebleu>=2.6.0",
 ]
 train = [
-    "datasets>=4.3.0",
-    "trl>=0.24.0",
-    "unsloth>=2026.6.9",
-    "wandb>=0.19",
-    "python-dotenv>=1.0",
+    "datasets>=5.0.0",
+    "trl>=1.7.1",
+    "unsloth>=2026.7.2",
+    "wandb>=0.28.0",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.scripts]

@@ -59,11 +59,13 @@ def main():
     subparsers = parser.add_subparsers(required=True)
 
     train_parser = subparsers.add_parser("train")
-    train_parser.add_argument("--dataset", default="atlasia/darija_english")
+    train_parser.add_argument("--dataset",
+                              default="atlasia/darija-english-combined")
     train_parser.set_defaults(func=run_train)
 
     eval_parser = subparsers.add_parser("evaluate")
-    eval_parser.add_argument("--dataset", default="atlasia/darija_english")
+    eval_parser.add_argument("--dataset",
+                             default="atlasia/darija-english-combined")
     eval_parser.set_defaults(func=run_evaluate)
 
     args = parser.parse_args()

@@ -32,7 +32,7 @@ def generate_translations(model, tokenizer, sources: list[str],
         ).to(model.device)
         input_len = inputs["input_ids"].shape[1]
         outputs = model.generate(**inputs,
-                                 max_new_tokens=128,
+                                 max_new_tokens=256,
                                  do_sample=False,
                                  use_cache=True)
         new_tokens = outputs[:, input_len:]
