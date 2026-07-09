@@ -36,7 +36,7 @@ class TrainConfig:
     gradient_accumulation_steps: int = 2
     per_device_eval_batch_size: int = 8
     num_train_epochs: int = 3
-    warmup_steps: int = 5
+    warmup_ratio: float = 0.1
     learning_rate: float = 2e-4
     logging_steps: int = 100
     weight_decay: float = 0.01

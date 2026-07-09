@@ -13,17 +13,23 @@ from darija_translator.data import (
 from darija_translator.evaluate import compute_translation_metrics, generate_translations
 from darija_translator.model import attach_lora, load_model_and_tokenizer
 from darija_translator.train import build_trainer, save_model
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 
-def prepare_data(dataset_name: str, data_config: DataConfig, tokenizer):
+def prepare_data(dataset_name: str,
+                 data_config: DataConfig,
+                 tokenizer,
+                 remove_columns: bool = True) -> tuple:
     dataset = load_dataset(dataset_name, split="train")
-    dataset = dataset.filter(is_darija_script)
-    dataset = dataset.map(lambda b: to_conversations(b, data_config),
-                          batched=True)
-    dataset = dataset.map(lambda b: format_conversations(b, tokenizer),
-                          batched=True)
-    dataset = dataset.filter(lambda ex: is_within_length(ex, data_config))
+    # dataset = dataset.filter(is_darija_script)
+    # dataset = dataset.map(lambda b: to_conversations(b, data_config),
+    #                       batched=True)
+    # dataset = dataset.map(lambda b: format_conversations(b, tokenizer),
+    #                       batched=True)
+    # dataset = dataset.filter(lambda ex: is_within_length(ex, data_config))
+    if remove_columns:
+        dataset = dataset.remove_columns(
+            [c for c in dataset.column_names if c != "text"])
     return split_dataset(dataset, data_config)
 
 
@@ -43,7 +49,10 @@ def run_train(args):
 def run_evaluate(args):
     model_config, data_config = ModelConfig(), DataConfig()
     model, tokenizer = load_model_and_tokenizer(model_config)
-    _, eval_dataset = prepare_data(args.dataset, data_config, tokenizer)
+    _, eval_dataset = prepare_data(args.dataset,
+                                   data_config,
+                                   tokenizer,
+                                   remove_columns=False)
     predictions = generate_translations(
         model,
         tokenizer,
@@ -59,13 +68,15 @@ def main():
     subparsers = parser.add_subparsers(required=True)
 
     train_parser = subparsers.add_parser("train")
-    train_parser.add_argument("--dataset",
-                              default="atlasia/darija-english-combined")
+    train_parser.add_argument(
+        "--dataset",
+        default="atlasia/english-to-darija-arabic-script-formatted")
     train_parser.set_defaults(func=run_train)
 
     eval_parser = subparsers.add_parser("evaluate")
-    eval_parser.add_argument("--dataset",
-                             default="atlasia/darija-english-combined")
+    eval_parser.add_argument(
+        "--dataset",
+        default="atlasia/english-to-darija-arabic-script-formatted")
     eval_parser.set_defaults(func=run_evaluate)
 
     args = parser.parse_args()
