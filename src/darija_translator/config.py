@@ -32,7 +32,8 @@ class ModelConfig:
 
 @dataclass(frozen=True)
 class TrainConfig:
-    per_device_train_batch_size: int = 16
+    dataloader_num_workers: int = 4
+    per_device_train_batch_size: int = 64
     gradient_accumulation_steps: int = 2
     per_device_eval_batch_size: int = 8
     num_train_epochs: int = 3

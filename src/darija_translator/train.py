@@ -15,7 +15,7 @@ def prepare_data(dataset_name: str,
                  data_config: DataConfig,
                  tokenizer,
                  remove_columns: bool = True) -> tuple:
-    dataset = load_dataset(dataset_name, split="train[:10]")
+    dataset = load_dataset(dataset_name, split="train")
     # dataset = dataset.filter(is_darija_script)
     # dataset = dataset.map(lambda b: to_conversations(b, data_config),
     #                       batched=True)
@@ -36,6 +36,7 @@ def build_trainer(model, tokenizer, train_dataset, eval_dataset,
 
     sft_args = SFTConfig(
         dataset_text_field="text",
+        dataloader_num_workers=config.dataloader_num_workers,
         per_device_train_batch_size=config.per_device_train_batch_size,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         packing=False,
@@ -52,6 +53,7 @@ def build_trainer(model, tokenizer, train_dataset, eval_dataset,
         seed=config.seed,
         report_to=config.report_to,
         output_dir=config.output_dir,
+        padding_free=False,
         save_strategy="steps",  # Save checkpoints at step intervals
         save_steps=400,
         save_total_limit=3,
