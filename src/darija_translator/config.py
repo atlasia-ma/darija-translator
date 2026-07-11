@@ -49,3 +49,4 @@ class TrainConfig:
     output_dir: str = "lora_model"
     report_to: str = "wandb"
     wandb_project: str = "darija-translator"
+    hub_model_id: str = "atlasia/edge-device-darija-translator"

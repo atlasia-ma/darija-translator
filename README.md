@@ -37,6 +37,10 @@ Training reports to Weights & Biases by default.
     cp .env.example .env
     # fill in WANDB_API_KEY from https://wandb.ai/authorize
 
+## Hugging face checkpointing
+
+huggingface-cli login
+
 ## Training (requires GPU)
 
     uv run darija-translator train
