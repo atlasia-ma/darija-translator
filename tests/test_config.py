@@ -61,3 +61,116 @@ def test_configs_accept_valid_overrides():
     assert ModelConfig(lora_r=32).lora_r == 32
     assert InferenceConfig(num_generations=4).num_generations == 4
     assert PreferenceConfig(max_chrf_similarity=75.0).max_chrf_similarity == 75.0
+
+
+@pytest.mark.parametrize("kwargs", [
+    {
+        "test_size": 0
+    },
+    {
+        "test_size": 1
+    },
+    {
+        "test_size": 1.5
+    },
+    {
+        "max_text_length": 0
+    },
+    {
+        "system_prompt": "   "
+    },
+])
+def test_data_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ValueError):
+        DataConfig(**kwargs)
+
+
+@pytest.mark.parametrize("kwargs", [
+    {
+        "lora_r": 0
+    },
+    {
+        "lora_alpha": 0
+    },
+    {
+        "lora_dropout": 1
+    },
+    {
+        "max_seq_length": 0
+    },
+    {
+        "target_modules": ()
+    },
+])
+def test_model_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ValueError):
+        ModelConfig(**kwargs)
+
+
+@pytest.mark.parametrize("kwargs", [
+    {
+        "per_device_train_batch_size": 0
+    },
+    {
+        "gradient_accumulation_steps": 0
+    },
+    {
+        "num_train_epochs": 0
+    },
+    {
+        "learning_rate": 0
+    },
+    {
+        "warmup_ratio": 1.5
+    },
+])
+def test_train_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ValueError):
+        TrainConfig(**kwargs)
+
+
+@pytest.mark.parametrize("kwargs", [
+    {
+        "batch_size": 0
+    },
+    {
+        "max_new_tokens": 0
+    },
+    {
+        "num_generations": 0
+    },
+    {
+        "temperature": 0
+    },
+    {
+        "top_p": 1.5
+    },
+    {
+        "adapter_model_id": ""
+    },
+])
+def test_inference_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ValueError):
+        InferenceConfig(**kwargs)
+
+
+def test_greedy_inference_ignores_the_sampling_parameters():
+    config = InferenceConfig(do_sample=False, temperature=0.0)
+
+    assert config.do_sample is False
+
+
+@pytest.mark.parametrize("kwargs", [
+    {
+        "max_chrf_similarity": -1
+    },
+    {
+        "max_chrf_similarity": 101
+    },
+    {
+        "output_path": ""
+    },
+])
+def test_preference_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ValueError):
+        PreferenceConfig(**kwargs)
