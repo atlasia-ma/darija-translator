@@ -1,23 +1,36 @@
-from dataclasses import dataclass, field
+"""Frozen config objects, one per pipeline stage.
+
+Anything two stages have to agree on — the base model, the context length,
+the seed, the adapter training pushes — lives here as a single constant so
+the stages cannot drift apart.
+"""
+from dataclasses import dataclass
+
+SEED = 3407
+BASE_MODEL_NAME = "LiquidAI/LFM2.5-230M"
+MAX_SEQ_LENGTH = 2048
+HUB_MODEL_ID = "atlasia/edge-device-darija-translator"
+# the exact prompt the SFT dataset was formatted with
+SYSTEM_PROMPT = "You are a professional English to Darija translator."
 
 
 @dataclass(frozen=True)
 class DataConfig:
-    system_prompt: str = "You are a professional English to Darija translator."
+    system_prompt: str = SYSTEM_PROMPT
     max_text_length: int = 2000
     test_size: float = 0.1
-    seed: int = 3407
+    seed: int = SEED
 
 
 @dataclass(frozen=True)
 class ModelConfig:
-    model_name: str = "LiquidAI/LFM2.5-230M"
-    max_seq_length: int = 2048
+    model_name: str = BASE_MODEL_NAME
+    max_seq_length: int = MAX_SEQ_LENGTH
     load_in_16bit: bool = True
     lora_r: int = 16
     lora_alpha: int = 16
     lora_dropout: int = 0
-    random_state: int = 3407
+    random_state: int = SEED
     target_modules: tuple = (
         "q_proj",
         "k_proj",
@@ -43,22 +56,22 @@ class TrainConfig:
     weight_decay: float = 0.01
     lr_scheduler_type: str = "linear"
     optim: str = "adamw_8bit"
-    seed: int = 3407
+    seed: int = SEED
     packing: bool = True
     group_by_length: bool = True
-    max_seq_length: int = 2048
+    max_seq_length: int = MAX_SEQ_LENGTH
     output_dir: str = "lora_model"
     report_to: str = "wandb"
     wandb_project: str = "darija-translator"
-    hub_model_id: str = "atlasia/edge-device-darija-translator"
+    hub_model_id: str = HUB_MODEL_ID
 
 
 @dataclass(frozen=True)
 class InferenceConfig:
-    base_model_name: str = "LiquidAI/LFM2.5-230M"
-    adapter_model_id: str = "atlasia/edge-device-darija-translator"
+    base_model_name: str = BASE_MODEL_NAME
+    adapter_model_id: str = HUB_MODEL_ID
     adapter_subfolder: str | None = None
-    max_seq_length: int = 2048
+    max_seq_length: int = MAX_SEQ_LENGTH
     load_in_16bit: bool = True
     batch_size: int = 32
     max_new_tokens: int = 256
@@ -67,7 +80,7 @@ class InferenceConfig:
     top_p: float = 0.95
     # candidates generated per prompt, the worst one becomes the bad sample
     num_generations: int = 1
-    seed: int = 3407
+    seed: int = SEED
 
 
 @dataclass(frozen=True)
