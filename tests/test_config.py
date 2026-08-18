@@ -1,4 +1,9 @@
-from darija_translator.config import DataConfig, ModelConfig, TrainConfig
+from darija_translator.config import (
+    DataConfig,
+    InferenceConfig,
+    ModelConfig,
+    TrainConfig,
+)
 
 
 def test_data_config_default_system_prompt():
@@ -64,3 +69,30 @@ def test_train_config_wandb_defaults():
     cfg = TrainConfig()
     assert cfg.report_to == "wandb"
     assert cfg.wandb_project == "darija-translator"
+
+
+def test_inference_config_defaults():
+    cfg = InferenceConfig()
+    assert cfg.base_model_name == "LiquidAI/LFM2.5-230M"
+    assert cfg.adapter_model_id == "atlasia/edge-device-darija-translator"
+    assert cfg.adapter_subfolder is None
+    assert cfg.max_seq_length == 2048
+    assert cfg.batch_size == 32
+    assert cfg.max_new_tokens == 256
+
+
+def test_inference_config_samples_by_default():
+    cfg = InferenceConfig()
+    assert cfg.do_sample is True
+    assert cfg.temperature == 0.9
+    assert cfg.top_p == 0.95
+    assert cfg.num_generations == 1
+
+
+def test_inference_config_is_overridable():
+    cfg = InferenceConfig(adapter_subfolder="last-checkpoint",
+                          batch_size=8,
+                          num_generations=4)
+    assert cfg.adapter_subfolder == "last-checkpoint"
+    assert cfg.batch_size == 8
+    assert cfg.num_generations == 4
