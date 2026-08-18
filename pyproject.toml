@@ -31,3 +31,4 @@ packages = ["src/darija_translator"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+testpaths = ["tests"]
