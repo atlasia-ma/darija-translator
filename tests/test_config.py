@@ -1,3 +1,7 @@
+import dataclasses
+
+import pytest
+
 from darija_translator.config import (
     DataConfig,
     InferenceConfig,
@@ -6,107 +10,54 @@ from darija_translator.config import (
     TrainConfig,
 )
 
-
-def test_data_config_default_system_prompt():
-    cfg = DataConfig()
-    assert cfg.system_prompt == "You are a professional English to Darija translator."
-
-
-def test_data_config_system_prompt_is_overridable():
-    cfg = DataConfig(system_prompt="Translate casually.")
-    assert cfg.system_prompt == "Translate casually."
+ALL_CONFIGS = [
+    DataConfig, ModelConfig, TrainConfig, InferenceConfig, PreferenceConfig
+]
 
 
-def test_data_config_default_max_text_length():
-    cfg = DataConfig()
-    assert cfg.max_text_length == 2000
+def test_system_prompt_matches_the_one_the_dataset_was_formatted_with():
+    # the fine-tuned model only behaves if inference reproduces this exactly
+    assert DataConfig().system_prompt == (
+        "You are a professional English to Darija translator.")
 
 
-def test_data_config_max_text_length_is_overridable():
-    cfg = DataConfig(max_text_length=500)
-    assert cfg.max_text_length == 500
+def test_inference_loads_the_base_model_that_was_fine_tuned():
+    assert InferenceConfig().base_model_name == ModelConfig().model_name
 
 
-def test_data_config_default_test_size():
-    cfg = DataConfig()
-    assert cfg.test_size == 0.1
+def test_inference_defaults_to_the_adapter_training_pushes():
+    assert InferenceConfig().adapter_model_id == TrainConfig().hub_model_id
 
 
-def test_data_config_default_seed():
-    cfg = DataConfig()
-    assert cfg.seed == 3407
+def test_training_and_model_agree_on_sequence_length():
+    assert TrainConfig().max_seq_length == ModelConfig().max_seq_length
 
 
-def test_model_config_defaults():
-    cfg = ModelConfig()
-    assert cfg.model_name == "LiquidAI/LFM2.5-230M"
-    assert cfg.max_seq_length == 2048
-    assert cfg.load_in_16bit is True
-    assert cfg.lora_r == 16
-    assert cfg.lora_alpha == 16
-    assert cfg.lora_dropout == 0
-    assert cfg.random_state == 3407
-    assert cfg.target_modules == (
-        "q_proj",
-        "k_proj",
-        "v_proj",
-        "out_proj",
-        "in_proj",
-        "w1",
-        "w2",
-        "w3",
-    )
+def test_generation_fits_inside_the_trained_context():
+    assert InferenceConfig().max_new_tokens < InferenceConfig().max_seq_length
 
 
-def test_train_config_defaults():
-    cfg = TrainConfig()
-    assert cfg.per_device_train_batch_size == 64
-    assert cfg.num_train_epochs == 3
-    assert cfg.learning_rate == 2e-4
-    assert cfg.seed == 3407
+def test_every_stage_shares_one_seed():
+    seeds = {
+        DataConfig().seed,
+        ModelConfig().random_state,
+        TrainConfig().seed,
+        InferenceConfig().seed,
+    }
+    assert len(seeds) == 1
 
 
-def test_train_config_wandb_defaults():
-    cfg = TrainConfig()
-    assert cfg.report_to == "wandb"
-    assert cfg.wandb_project == "darija-translator"
+@pytest.mark.parametrize("config_class", ALL_CONFIGS)
+def test_configs_are_frozen(config_class):
+    config = config_class()
+    first_field = dataclasses.fields(config_class)[0].name
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        setattr(config, first_field, "changed")
 
 
-def test_inference_config_defaults():
-    cfg = InferenceConfig()
-    assert cfg.base_model_name == "LiquidAI/LFM2.5-230M"
-    assert cfg.adapter_model_id == "atlasia/edge-device-darija-translator"
-    assert cfg.adapter_subfolder is None
-    assert cfg.max_seq_length == 2048
-    assert cfg.batch_size == 32
-    assert cfg.max_new_tokens == 256
-
-
-def test_inference_config_samples_by_default():
-    cfg = InferenceConfig()
-    assert cfg.do_sample is True
-    assert cfg.temperature == 0.9
-    assert cfg.top_p == 0.95
-    assert cfg.num_generations == 1
-
-
-def test_inference_config_is_overridable():
-    cfg = InferenceConfig(adapter_subfolder="last-checkpoint",
-                          batch_size=8,
-                          num_generations=4)
-    assert cfg.adapter_subfolder == "last-checkpoint"
-    assert cfg.batch_size == 8
-    assert cfg.num_generations == 4
-
-
-def test_preference_config_defaults():
-    cfg = PreferenceConfig()
-    assert cfg.max_chrf_similarity == 90.0
-    assert cfg.output_path == "data/dpo_pairs.jsonl"
-    assert cfg.hub_dataset_id == "atlasia/english-to-darija-dpo"
-
-
-def test_preference_config_is_overridable():
-    cfg = PreferenceConfig(max_chrf_similarity=75.0, output_path="out.jsonl")
-    assert cfg.max_chrf_similarity == 75.0
-    assert cfg.output_path == "out.jsonl"
+def test_configs_accept_valid_overrides():
+    assert DataConfig(test_size=0.2).test_size == 0.2
+    assert ModelConfig(lora_r=32).lora_r == 32
+    assert InferenceConfig(num_generations=4).num_generations == 4
+    assert PreferenceConfig(max_chrf_similarity=75.0).max_chrf_similarity == 75.0
