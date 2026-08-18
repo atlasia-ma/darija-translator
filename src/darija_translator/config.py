@@ -51,3 +51,20 @@ class TrainConfig:
     report_to: str = "wandb"
     wandb_project: str = "darija-translator"
     hub_model_id: str = "atlasia/edge-device-darija-translator"
+
+
+@dataclass(frozen=True)
+class InferenceConfig:
+    base_model_name: str = "LiquidAI/LFM2.5-230M"
+    adapter_model_id: str = "atlasia/edge-device-darija-translator"
+    adapter_subfolder: str | None = None
+    max_seq_length: int = 2048
+    load_in_16bit: bool = True
+    batch_size: int = 32
+    max_new_tokens: int = 256
+    do_sample: bool = True
+    temperature: float = 0.9
+    top_p: float = 0.95
+    # candidates generated per prompt, the worst one becomes the bad sample
+    num_generations: int = 1
+    seed: int = 3407
