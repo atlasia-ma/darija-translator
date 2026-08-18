@@ -54,7 +54,7 @@ def test_model_config_defaults():
 
 def test_train_config_defaults():
     cfg = TrainConfig()
-    assert cfg.per_device_train_batch_size == 16
+    assert cfg.per_device_train_batch_size == 64
     assert cfg.num_train_epochs == 3
     assert cfg.learning_rate == 2e-4
     assert cfg.seed == 3407
