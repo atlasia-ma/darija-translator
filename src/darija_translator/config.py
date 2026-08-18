@@ -14,12 +14,23 @@ HUB_MODEL_ID = "atlasia/edge-device-darija-translator"
 SYSTEM_PROMPT = "You are a professional English to Darija translator."
 
 
+def _require(condition, message: str) -> None:
+    """Fail at construction, not forty minutes into a training run."""
+    if not condition:
+        raise ValueError(message)
+
+
 @dataclass(frozen=True)
 class DataConfig:
     system_prompt: str = SYSTEM_PROMPT
     max_text_length: int = 2000
     test_size: float = 0.1
     seed: int = SEED
+
+    def __post_init__(self):
+        _require(self.system_prompt.strip(), "system_prompt must not be empty")
+        _require(self.max_text_length > 0, "max_text_length must be positive")
+        _require(0 < self.test_size < 1, "test_size must be between 0 and 1")
 
 
 @dataclass(frozen=True)
@@ -41,6 +52,13 @@ class ModelConfig:
         "w2",
         "w3",
     )
+
+    def __post_init__(self):
+        _require(self.max_seq_length > 0, "max_seq_length must be positive")
+        _require(self.lora_r > 0, "lora_r must be positive")
+        _require(self.lora_alpha > 0, "lora_alpha must be positive")
+        _require(0 <= self.lora_dropout < 1, "lora_dropout must be in [0, 1)")
+        _require(self.target_modules, "target_modules must not be empty")
 
 
 @dataclass(frozen=True)
@@ -65,6 +83,20 @@ class TrainConfig:
     wandb_project: str = "darija-translator"
     hub_model_id: str = HUB_MODEL_ID
 
+    def __post_init__(self):
+        _require(self.per_device_train_batch_size > 0,
+                 "per_device_train_batch_size must be positive")
+        _require(self.per_device_eval_batch_size > 0,
+                 "per_device_eval_batch_size must be positive")
+        _require(self.gradient_accumulation_steps > 0,
+                 "gradient_accumulation_steps must be positive")
+        _require(self.num_train_epochs > 0,
+                 "num_train_epochs must be positive")
+        _require(self.learning_rate > 0, "learning_rate must be positive")
+        _require(0 <= self.warmup_ratio <= 1,
+                 "warmup_ratio must be between 0 and 1")
+        _require(self.max_seq_length > 0, "max_seq_length must be positive")
+
 
 @dataclass(frozen=True)
 class InferenceConfig:
@@ -82,6 +114,20 @@ class InferenceConfig:
     num_generations: int = 1
     seed: int = SEED
 
+    def __post_init__(self):
+        _require(self.base_model_name, "base_model_name must not be empty")
+        _require(self.adapter_model_id, "adapter_model_id must not be empty")
+        _require(self.batch_size > 0, "batch_size must be positive")
+        _require(self.max_new_tokens > 0, "max_new_tokens must be positive")
+        _require(self.max_new_tokens < self.max_seq_length,
+                 "max_new_tokens must fit inside max_seq_length")
+        _require(self.num_generations > 0,
+                 "num_generations must be at least 1")
+        if self.do_sample:
+            _require(self.temperature > 0,
+                     "temperature must be positive when sampling")
+            _require(0 < self.top_p <= 1, "top_p must be in (0, 1]")
+
 
 @dataclass(frozen=True)
 class PreferenceConfig:
@@ -90,3 +136,8 @@ class PreferenceConfig:
     max_chrf_similarity: float = 90.0
     output_path: str = "data/dpo_pairs.jsonl"
     hub_dataset_id: str = "atlasia/english-to-darija-dpo"
+
+    def __post_init__(self):
+        _require(0 <= self.max_chrf_similarity <= 100,
+                 "max_chrf_similarity must be between 0 and 100")
+        _require(self.output_path, "output_path must not be empty")
