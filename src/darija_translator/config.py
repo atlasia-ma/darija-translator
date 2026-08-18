@@ -68,3 +68,12 @@ class InferenceConfig:
     # candidates generated per prompt, the worst one becomes the bad sample
     num_generations: int = 1
     seed: int = 3407
+
+
+@dataclass(frozen=True)
+class PreferenceConfig:
+    """DPO pairs: the dataset darija is chosen, the model output is rejected."""
+    # a generation this close to the reference is not a useful bad sample
+    max_chrf_similarity: float = 90.0
+    output_path: str = "data/dpo_pairs.jsonl"
+    hub_dataset_id: str = "atlasia/english-to-darija-dpo"

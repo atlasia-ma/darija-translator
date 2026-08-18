@@ -2,6 +2,7 @@ from darija_translator.config import (
     DataConfig,
     InferenceConfig,
     ModelConfig,
+    PreferenceConfig,
     TrainConfig,
 )
 
@@ -96,3 +97,16 @@ def test_inference_config_is_overridable():
     assert cfg.adapter_subfolder == "last-checkpoint"
     assert cfg.batch_size == 8
     assert cfg.num_generations == 4
+
+
+def test_preference_config_defaults():
+    cfg = PreferenceConfig()
+    assert cfg.max_chrf_similarity == 90.0
+    assert cfg.output_path == "data/dpo_pairs.jsonl"
+    assert cfg.hub_dataset_id == "atlasia/english-to-darija-dpo"
+
+
+def test_preference_config_is_overridable():
+    cfg = PreferenceConfig(max_chrf_similarity=75.0, output_path="out.jsonl")
+    assert cfg.max_chrf_similarity == 75.0
+    assert cfg.output_path == "out.jsonl"
