@@ -1,4 +1,5 @@
 import argparse
+import os
 from dataclasses import replace
 
 from datasets import Dataset, load_dataset
@@ -18,7 +19,7 @@ from darija_translator.data import (
     to_conversations,
 )
 from darija_translator.evaluate import compute_translation_metrics, generate_translations
-from darija_translator.inference import load_for_inference
+from darija_translator.inference import load_for_inference, to_generation_record, translate
 from darija_translator.jsonl import (
     last_row_index,
     open_for_records,
@@ -148,6 +149,86 @@ def run_generate_dpo(args):
         print(f"pushed {len(pairs)} pairs to {args.push_to_hub}")
 
 
+def load_english_rows(source: str, split: str, column: str, start: int,
+                      limit: int | None):
+    """An English corpus with no darija labels: a Hub dataset or a local file."""
+    if os.path.exists(source):
+        builder = {
+            ".jsonl": "json",
+            ".json": "json",
+            ".csv": "csv",
+            ".tsv": "csv",
+            ".parquet": "parquet",
+            ".txt": "text",
+        }.get(os.path.splitext(source)[1], "text")
+        dataset = load_dataset(builder, data_files=source, split="train")
+    else:
+        dataset = load_dataset(source, split=split)
+
+    if column not in dataset.column_names:
+        raise SystemExit(
+            f"no {column!r} column in {source}; found {dataset.column_names}. "
+            f"pass --column with one of those")
+
+    end = len(dataset) if limit is None else min(start + limit, len(dataset))
+    return dataset.select(range(start, max(start, end)))
+
+
+def run_translate(args):
+    data_config = DataConfig()
+    inference_config = replace(
+        InferenceConfig(),
+        adapter_model_id=args.adapter,
+        adapter_subfolder=args.subfolder,
+        batch_size=args.batch_size,
+        max_new_tokens=args.max_new_tokens,
+        do_sample=args.sample,
+        temperature=args.temperature,
+        num_generations=args.num_generations,
+    )
+
+    start = args.start
+    if args.resume:
+        stopped_at = last_row_index(args.out)
+        if stopped_at is not None:
+            start = stopped_at + 1
+            print(f"resuming after row {stopped_at}")
+
+    dataset = load_english_rows(args.dataset, args.split, args.column, start,
+                                args.limit)
+    sources = dataset[args.column]
+    if not sources:
+        print("nothing left to translate")
+        return
+
+    model, tokenizer = load_for_inference(inference_config)
+
+    written = 0
+    with open_for_records(args.out, args.resume) as handle:
+        for offset, (english, candidates) in enumerate(
+                translate(model, tokenizer, sources, data_config.system_prompt,
+                          inference_config)):
+            record = to_generation_record(english, candidates,
+                                          data_config.system_prompt,
+                                          inference_config,
+                                          {"row_index": start + offset})
+            if record is None:
+                continue
+            write_record(handle, record)
+            handle.flush()
+            written += 1
+            if written % 100 == 0:
+                print(f"{written} translated (row {record['row_index']})")
+
+    print(f"wrote {written} translations of {len(sources)} sources "
+          f"to {args.out}")
+
+    if args.push_to_hub:
+        translations = Dataset.from_json(args.out)
+        translations.push_to_hub(args.push_to_hub, private=True)
+        print(f"pushed {len(translations)} rows to {args.push_to_hub}")
+
+
 def main():
     parser = argparse.ArgumentParser(prog="darija-translator")
     subparsers = parser.add_subparsers(required=True)
@@ -163,6 +244,54 @@ def main():
         "--dataset",
         default="atlasia/english-to-darija-arabic-script-formatted")
     eval_parser.set_defaults(func=run_evaluate)
+
+    translate_parser = subparsers.add_parser(
+        "translate",
+        help="translate an unlabelled English corpus with the trained adapter")
+    translate_parser.add_argument(
+        "--dataset",
+        required=True,
+        help="Hub dataset id, or a local .jsonl/.csv/.parquet/.txt file")
+    translate_parser.add_argument("--split", default="train")
+    translate_parser.add_argument("--column",
+                                  default="english",
+                                  help="column holding the English text")
+    translate_parser.add_argument("--adapter",
+                                  default=InferenceConfig.adapter_model_id)
+    translate_parser.add_argument("--subfolder",
+                                  default=None,
+                                  help="adapter subfolder, e.g. last-checkpoint")
+    translate_parser.add_argument("--start", type=int, default=0)
+    translate_parser.add_argument("--limit",
+                                  type=int,
+                                  default=None,
+                                  help="default: the whole corpus")
+    translate_parser.add_argument("--batch-size",
+                                  type=int,
+                                  default=InferenceConfig.batch_size)
+    translate_parser.add_argument("--max-new-tokens",
+                                  type=int,
+                                  default=InferenceConfig.max_new_tokens)
+    translate_parser.add_argument("--sample",
+                                  action="store_true",
+                                  help="sample instead of decoding greedily")
+    translate_parser.add_argument("--temperature",
+                                  type=float,
+                                  default=InferenceConfig.temperature)
+    translate_parser.add_argument("--num-generations",
+                                  type=int,
+                                  default=InferenceConfig.num_generations,
+                                  help="candidates per source, all are kept")
+    translate_parser.add_argument("--out", default="data/translations.jsonl")
+    translate_parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="append to --out, continuing after its last row")
+    translate_parser.add_argument("--push-to-hub",
+                                  default=None,
+                                  metavar="REPO_ID",
+                                  help="push the translations as a HF dataset")
+    translate_parser.set_defaults(func=run_translate)
 
     dpo_parser = subparsers.add_parser(
         "generate-dpo",
