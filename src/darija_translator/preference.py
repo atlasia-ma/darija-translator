@@ -3,8 +3,6 @@
 The reference darija from the dataset is the `chosen` answer, the model's own
 generation is the `rejected` one — on-policy bad samples for DPO.
 """
-import json
-import os
 from collections.abc import Iterator
 
 from sacrebleu import CHRF
@@ -56,25 +54,6 @@ def to_preference_record(english: str,
 def is_useful_pair(record: dict, config: PreferenceConfig) -> bool:
     """A generation that already matches the reference teaches DPO nothing."""
     return record["chrf"] <= config.max_chrf_similarity
-
-
-def write_record(handle, record: dict) -> None:
-    """One JSON object per line, unescaped so darija stays readable."""
-    handle.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-
-def last_row_index(path: str) -> int | None:
-    """Where a previous interrupted run stopped, from the records it wrote."""
-    if not os.path.exists(path):
-        return None
-    last = None
-    with open(path, encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                last = line
-    if last is None:
-        return None
-    return json.loads(last).get("row_index")
 
 
 def build_preference_record(english: str,

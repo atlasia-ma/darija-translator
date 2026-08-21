@@ -98,6 +98,39 @@ def translate_batch(model, tokenizer, sources: list[str], system_prompt: str,
                             config.num_generations)
 
 
+def describe_decoding(config: InferenceConfig) -> str:
+    """Provenance: months later this file is half a preference dataset."""
+    if not config.do_sample:
+        return "greedy"
+    return f"sample(temperature={config.temperature}, top_p={config.top_p})"
+
+
+def describe_adapter(config: InferenceConfig) -> str:
+    if not config.adapter_subfolder:
+        return config.adapter_model_id
+    return f"{config.adapter_model_id}/{config.adapter_subfolder}"
+
+
+def to_generation_record(english: str,
+                         candidates: list[str],
+                         system_prompt: str,
+                         config: InferenceConfig,
+                         metadata: dict | None = None) -> dict | None:
+    """A translated row, with no claim about whether the translation is good."""
+    kept = [candidate.strip() for candidate in candidates if candidate.strip()]
+    if not english.strip() or not kept:
+        return None
+    return {
+        "prompt": build_translation_messages(english, system_prompt),
+        "english": english.strip(),
+        "generated": kept[0],
+        "candidates": kept,
+        "adapter": describe_adapter(config),
+        "decoding": describe_decoding(config),
+        **(metadata or {}),
+    }
+
+
 def batched(items: list, batch_size: int) -> Iterator[list]:
     for start in range(0, len(items), batch_size):
         yield items[start:start + batch_size]

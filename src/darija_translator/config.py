@@ -107,7 +107,8 @@ class InferenceConfig:
     load_in_16bit: bool = True
     batch_size: int = 32
     max_new_tokens: int = 256
-    do_sample: bool = True
+    # greedy: the mode of the policy, and what an edge device will decode with
+    do_sample: bool = False
     temperature: float = 0.9
     top_p: float = 0.95
     # candidates generated per prompt, the worst one becomes the bad sample

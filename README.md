@@ -15,8 +15,9 @@ rather than DDD-style layers:
     ├── train.py         # SFTTrainer wiring, wandb tracking
     ├── evaluate.py       # BLEU/chrF scoring + generation
     ├── inference.py       # load trained adapter + batched generation
-    ├── preference.py       # DPO pairs from model generations
-    └── cli.py               # `darija-translator train` / `evaluate` / `generate-dpo`
+    ├── jsonl.py            # streaming record IO, resume support
+    ├── preference.py        # DPO pairs from model generations
+    └── cli.py                # train / evaluate / translate / generate-dpo
 
 Pure logic (`data.py`, `evaluate.py`'s `compute_translation_metrics`, all of
 `config.py`, the prompt/pair helpers in `inference.py` and `preference.py`) is
@@ -54,11 +55,31 @@ huggingface-cli login
 
 Reports BLEU and chrF on the held-out split.
 
+## Translating an unlabelled corpus
+
+Runs the trained adapter over English text that has no darija labels, which is
+the first half of building a DPO set: these generations are the candidate
+`rejected` answers, waiting for a `chosen` counterpart from a teacher model or
+a human pass.
+
+    uv run darija-translator translate --dataset my-corpus.jsonl --column english
+
+`--dataset` takes a Hub dataset id or a local `.jsonl` / `.csv` / `.parquet` /
+`.txt` file. Nothing is filtered except empty generations — with no reference
+there is nothing to score against, so every row is kept as-is. Each record
+carries the prompt, the translation, every candidate, and which adapter and
+decoding produced it, so the pairing pass can join against it later.
+
+Decoding is greedy by default: the model's most likely output is what an edge
+device will actually emit, so that is the output worth correcting. `--sample`
+with `--num-generations 4` produces diverse candidates instead, which is what
+you want if a human is going to rank them.
+
 ## DPO data generation
 
-Builds preference pairs for a DPO round: the dataset darija is the `chosen`
-answer, the model's own generation is the `rejected` one — on-policy bad
-samples from the SFT checkpoint.
+Builds preference pairs for a DPO round from a corpus that **does** have
+reference translations: the reference darija is the `chosen` answer, the
+model's own generation is the `rejected` one.
 
     uv run darija-translator generate-dpo --limit 5000
 
