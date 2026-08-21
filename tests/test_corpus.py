@@ -5,6 +5,7 @@ from darija_translator.corpus import (
     cap_repeated_openings,
     decontaminate,
     dedupe,
+    detokenise,
     length_bucket,
     normalise,
     parse_source,
@@ -145,3 +146,24 @@ def test_parse_source_reads_a_row_filter():
 def test_parse_source_rejects_malformed_specs(spec):
     with pytest.raises(ValueError):
         parse_source(spec)
+
+
+def test_detokenise_reattaches_punctuation():
+    assert detokenise(["We", "should", "call", "it", "a", "day",
+                       "."]) == "We should call it a day."
+
+
+def test_detokenise_rejoins_contractions():
+    assert detokenise(["It", "'s", "raining", "cats", "and", "dogs",
+                       "."]) == "It's raining cats and dogs."
+    assert detokenise(["They", "did", "n't", "come",
+                       "."]) == "They didn't come."
+
+
+def test_detokenise_handles_brackets_and_quotes():
+    assert detokenise(["He", "said", "(", "quietly", ")",
+                       "yes"]) == "He said (quietly) yes"
+
+
+def test_detokenise_accepts_plain_strings_unchanged():
+    assert detokenise("Already a sentence.") == "Already a sentence."
