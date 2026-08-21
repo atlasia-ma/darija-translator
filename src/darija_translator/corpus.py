@@ -42,6 +42,26 @@ def detokenise(value) -> str:
     return normalise(text)
 
 
+def phrase_pattern(phrases: Iterable[str]):
+    """Literal alternation over the phrases worth selecting sentences for."""
+    cleaned = {
+        normalise(phrase).casefold()
+        for phrase in phrases if len(normalise(phrase)) > 2
+    }
+    if not cleaned:
+        return None
+    alternation = "|".join(
+        re.escape(phrase) for phrase in sorted(cleaned, key=len, reverse=True))
+    return re.compile(r"\b(?:" + alternation + r")\b")
+
+
+def contains_phrase(text: str, pattern) -> bool:
+    """No pattern means no filter, so everything passes."""
+    if pattern is None:
+        return True
+    return bool(pattern.search(normalise(text).casefold()))
+
+
 def within_length(text: str, config: CorpusConfig) -> bool:
     return config.min_words <= word_count(text) <= config.max_words
 

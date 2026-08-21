@@ -92,6 +92,21 @@ also skips downloading it).
 The output has one text column, `english`, plus the source each sentence came
 from. After `translate` it becomes two: `english` and `generated`.
 
+### Selecting for idioms
+
+Idiom-bearing sentences are sparse — around 3% of a general corpus — and the
+ones in a dedicated idiom corpus tend to be long excerpts, where the model
+fails because of the length rather than the figurative phrase. `--must-contain`
+selects instead: keep only sentences containing one of a list of phrases.
+
+    uv run darija-translator prepare-corpus         --source sentence-transformers/parallel-sentences-opus-100:en-ar:english:8000         --source sentence-transformers/parallel-sentences-tatoeba:en-de:english:4000         --must-contain Gooogr/pie_idioms::idiom         --max-words 15 --total 10000         --exclude-dataset data/corpus.jsonl --out data/idioms.jsonl
+
+That pulls short idiom sentences out of corpora you already have, skipping
+anything in the main corpus, and `cat data/idioms.jsonl >> data/corpus.jsonl`
+merges the two. `--must-contain` also accepts a local `.txt` file of one phrase
+per line. Matching is literal, so "call it a day" won't catch "called it a
+day".
+
 ## Translating an unlabelled corpus
 
 Runs the trained adapter over English text that has no darija labels, which is

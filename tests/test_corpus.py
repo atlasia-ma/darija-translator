@@ -3,12 +3,14 @@ import pytest
 from darija_translator.config import CorpusConfig
 from darija_translator.corpus import (
     cap_repeated_openings,
+    contains_phrase,
     decontaminate,
     dedupe,
     detokenise,
     length_bucket,
     normalise,
     parse_source,
+    phrase_pattern,
     stratified_sample,
     within_length,
     word_count,
@@ -167,3 +169,38 @@ def test_detokenise_handles_brackets_and_quotes():
 
 def test_detokenise_accepts_plain_strings_unchanged():
     assert detokenise("Already a sentence.") == "Already a sentence."
+
+
+def test_phrase_pattern_matches_on_word_boundaries():
+    pattern = phrase_pattern(["call it a day", "over the moon"])
+
+    assert contains_phrase("We should call it a day.", pattern) is True
+    assert contains_phrase("They were over the moon!", pattern) is True
+    assert contains_phrase("Nothing figurative here.", pattern) is False
+
+
+def test_phrase_pattern_ignores_case_and_spacing():
+    pattern = phrase_pattern(["  Call It A Day "])
+
+    assert contains_phrase("we should CALL it a day", pattern) is True
+
+
+def test_phrase_pattern_does_not_match_inside_words():
+    pattern = phrase_pattern(["a day"])
+
+    assert contains_phrase("holiday", pattern) is False
+
+
+def test_phrase_pattern_skips_phrases_too_short_to_be_meaningful():
+    pattern = phrase_pattern(["a", "of", "over the moon"])
+
+    assert contains_phrase("a bird flew over the trees", pattern) is False
+    assert contains_phrase("they were over the moon", pattern) is True
+
+
+def test_phrase_pattern_is_none_without_usable_phrases():
+    assert phrase_pattern(["", "  ", "a"]) is None
+
+
+def test_contains_phrase_is_true_when_no_filter_is_configured():
+    assert contains_phrase("anything at all", None) is True
