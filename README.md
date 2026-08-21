@@ -14,12 +14,14 @@ rather than DDD-style layers:
     ├── model.py        # load base model + attach LoRA (Unsloth)
     ├── train.py         # SFTTrainer wiring, wandb tracking
     ├── evaluate.py       # BLEU/chrF scoring
+    ├── corpus.py         # mix English sources into one balanced corpus
     ├── inference.py       # load trained adapter + batched generation
     ├── jsonl.py            # streaming record IO, resume support
     ├── preference.py        # DPO pairs from model generations
     └── cli.py                # train / evaluate / translate / generate-dpo
 
-Pure logic (`data.py`, `evaluate.py`, all of `config.py`, `jsonl.py`, the
+Pure logic (`data.py`, `evaluate.py`, `corpus.py`, all of `config.py`,
+`jsonl.py`, the
 prompt/record helpers in `inference.py` and `preference.py`) is unit-tested.
 Model/training code (`model.py`, `train.py`, `load_for_inference`) isn't — it's an integration point with a real model
 and GPU, verified instead via manual smoke-test scripts in `scripts/`.
@@ -55,6 +57,29 @@ huggingface-cli login
 Reports BLEU and chrF for the trained adapter on the held-out split,
 1000 sentences by default (`--limit 0` for all ~71k). Point it at another
 checkpoint with `--adapter` / `--subfolder`.
+
+## Building the English corpus
+
+Mixes several English sources into one file for `translate`. Diversity is the
+point — the model is weakest on registers the SFT set was thin on, so length
+bands are sampled evenly and no single sentence pattern is allowed to dominate.
+
+    uv run darija-translator prepare-corpus         --source sentence-transformers/parallel-sentences-tatoeba:en-de:english:20000         --source Gooogr/pie_idioms::tokens:3000:is_pie=true         --total 20000 --out data/corpus.jsonl
+
+Each `--source` is `dataset[:config[:column[:count[:field=value]]]]`; leave a
+segment empty to skip it. The trailing `field=value` filters rows — above, it
+keeps only instances where the expression is used figuratively. Token-list
+columns are detokenised into real sentences.
+
+Every source is deduped, filtered to `--min-words`/`--max-words`, capped so one
+opening ("Sami told Layla...") can't repeat more than a few times, then sampled
+across length bands. Sentences already present in the SFT training data are
+dropped — the model can't fail on what it memorised, so those rows teach
+nothing — via `--exclude-dataset` (`--no-decontaminate` skips the check, which
+also skips downloading it).
+
+The output has one text column, `english`, plus the source each sentence came
+from. After `translate` it becomes two: `english` and `generated`.
 
 ## Translating an unlabelled corpus
 
