@@ -13,16 +13,15 @@ rather than DDD-style layers:
     ├── data.py        # filtering, chat formatting, length filtering, split
     ├── model.py        # load base model + attach LoRA (Unsloth)
     ├── train.py         # SFTTrainer wiring, wandb tracking
-    ├── evaluate.py       # BLEU/chrF scoring + generation
+    ├── evaluate.py       # BLEU/chrF scoring
     ├── inference.py       # load trained adapter + batched generation
     ├── jsonl.py            # streaming record IO, resume support
     ├── preference.py        # DPO pairs from model generations
     └── cli.py                # train / evaluate / translate / generate-dpo
 
-Pure logic (`data.py`, `evaluate.py`'s `compute_translation_metrics`, all of
-`config.py`, the prompt/pair helpers in `inference.py` and `preference.py`) is
-unit-tested. Model/training code (`model.py`, `train.py`, `load_for_inference`,
-`generate_translations`) isn't — it's an integration point with a real model
+Pure logic (`data.py`, `evaluate.py`, all of `config.py`, `jsonl.py`, the
+prompt/record helpers in `inference.py` and `preference.py`) is unit-tested.
+Model/training code (`model.py`, `train.py`, `load_for_inference`) isn't — it's an integration point with a real model
 and GPU, verified instead via manual smoke-test scripts in `scripts/`.
 
 ## Setup
@@ -53,7 +52,9 @@ huggingface-cli login
 
     uv run darija-translator evaluate
 
-Reports BLEU and chrF on the held-out split.
+Reports BLEU and chrF for the trained adapter on the held-out split,
+1000 sentences by default (`--limit 0` for all ~71k). Point it at another
+checkpoint with `--adapter` / `--subfolder`.
 
 ## Translating an unlabelled corpus
 
