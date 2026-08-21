@@ -5,11 +5,23 @@ from dataclasses import replace
 from datasets import Dataset, load_dataset
 
 from darija_translator.config import (
+    CorpusConfig,
     DataConfig,
     InferenceConfig,
     ModelConfig,
     PreferenceConfig,
     TrainConfig,
+)
+from darija_translator.corpus import (
+    cap_repeated_openings,
+    decontaminate,
+    dedupe,
+    detokenise,
+    length_bucket,
+    parse_source,
+    stratified_sample,
+    to_seen_set,
+    within_length,
 )
 from darija_translator.data import split_dataset
 from darija_translator.evaluate import compute_translation_metrics
@@ -220,6 +232,85 @@ def run_translate(args):
         print(f"pushed {len(translations)} rows to {args.push_to_hub}")
 
 
+def texts_from_source(spec, split: str, config: CorpusConfig) -> list[str]:
+    """Everything usable one source contributes, before the global mix."""
+    dataset = load_dataset(spec.dataset, spec.config, split=split)
+    if spec.column not in dataset.column_names:
+        raise SystemExit(f"no {spec.column!r} column in {spec.dataset}; "
+                         f"found {dataset.column_names}")
+    if spec.filter_field:
+        if spec.filter_field not in dataset.column_names:
+            raise SystemExit(f"no {spec.filter_field!r} column to filter on "
+                             f"in {spec.dataset}")
+        wanted = spec.filter_value.casefold()
+        dataset = dataset.filter(
+            lambda row: str(row[spec.filter_field]).casefold() == wanted)
+
+    # token-list columns (idiom corpora ship these) become plain sentences
+    texts = [detokenise(value) for value in dataset[spec.column]]
+    texts = dedupe(texts)
+    texts = [text for text in texts if within_length(text, config)]
+    texts = cap_repeated_openings(texts, config)
+    if spec.count:
+        texts = stratified_sample(texts, spec.count, config)
+    return texts
+
+
+def excluded_texts(dataset_name: str, column: str) -> set:
+    print(f"loading {dataset_name} to decontaminate against")
+    dataset = load_dataset(dataset_name, split="train")
+    return to_seen_set(dataset[column])
+
+
+def report_lengths(texts: list[str], config: CorpusConfig) -> None:
+    edges = list(config.length_buckets)
+    labels = [f"<={edges[0]}"] + [
+        f"{a + 1}-{b}" for a, b in zip(edges, edges[1:])
+    ] + [f">{edges[-1]}"]
+    counts = [0] * len(labels)
+    for text in texts:
+        counts[length_bucket(text, config.length_buckets)] += 1
+    print("length bands: " +
+          "  ".join(f"{label} {count}" for label, count in zip(labels, counts)))
+
+
+def run_prepare_corpus(args):
+    config = replace(CorpusConfig(),
+                     min_words=args.min_words,
+                     max_words=args.max_words,
+                     output_path=args.out)
+
+    collected = []
+    for raw in args.source:
+        spec = parse_source(raw)
+        texts = texts_from_source(spec, args.split, config)
+        print(f"{spec.dataset}: {len(texts)} sentences")
+        collected.extend((text, spec.dataset) for text in texts)
+
+    by_text = dict(collected)
+    texts = dedupe([text for text, _ in collected])
+    print(f"{len(texts)} after dropping cross-source duplicates")
+
+    if not args.no_decontaminate:
+        seen = excluded_texts(args.exclude_dataset, args.exclude_column)
+        texts = decontaminate(texts, seen)
+        print(f"{len(texts)} after removing sentences already in "
+              f"{args.exclude_dataset}")
+
+    if args.total:
+        texts = stratified_sample(texts, args.total, config)
+
+    report_lengths(texts, config)
+
+    with open_for_records(config.output_path, resume=False) as handle:
+        for text in texts:
+            write_record(handle, {
+                "english": text,
+                "source": by_text.get(text, "unknown"),
+            })
+    print(f"wrote {len(texts)} sentences to {config.output_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(prog="darija-translator")
     subparsers = parser.add_subparsers(required=True)
@@ -248,6 +339,41 @@ def main():
                              help="sentences from the held-out split; "
                              "0 evaluates all of it")
     eval_parser.set_defaults(func=run_evaluate)
+
+    corpus_parser = subparsers.add_parser(
+        "prepare-corpus",
+        help="combine English sources into one corpus for translate")
+    corpus_parser.add_argument(
+        "--source",
+        action="append",
+        required=True,
+        metavar="DATASET[:CONFIG[:COLUMN[:COUNT[:FIELD=VALUE]]]]",
+        help="repeatable; e.g. "
+        "sentence-transformers/parallel-sentences-tatoeba:en-de:english:20000")
+    corpus_parser.add_argument("--split",
+                               default="train",
+                               help="split read from every source")
+    corpus_parser.add_argument("--total",
+                               type=int,
+                               default=None,
+                               help="cap the mixed corpus, sampled evenly "
+                               "across length bands")
+    corpus_parser.add_argument("--min-words",
+                               type=int,
+                               default=CorpusConfig.min_words)
+    corpus_parser.add_argument("--max-words",
+                               type=int,
+                               default=CorpusConfig.max_words)
+    corpus_parser.add_argument(
+        "--exclude-dataset",
+        default="atlasia/english-to-darija-arabic-script-formatted",
+        help="drop sentences the model already trained on")
+    corpus_parser.add_argument("--exclude-column", default="english")
+    corpus_parser.add_argument("--no-decontaminate",
+                               action="store_true",
+                               help="skip the overlap check")
+    corpus_parser.add_argument("--out", default=CorpusConfig.output_path)
+    corpus_parser.set_defaults(func=run_prepare_corpus)
 
     translate_parser = subparsers.add_parser(
         "translate",
