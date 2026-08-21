@@ -18,7 +18,7 @@ from darija_translator.data import (
     split_dataset,
     to_conversations,
 )
-from darija_translator.evaluate import compute_translation_metrics, generate_translations
+from darija_translator.evaluate import compute_translation_metrics
 from darija_translator.inference import load_for_inference, to_generation_record, translate
 from darija_translator.jsonl import (
     last_row_index,
@@ -64,20 +64,29 @@ def run_train(args):
 
 
 def run_evaluate(args):
-    model_config, data_config = ModelConfig(), DataConfig()
-    model, tokenizer = load_model_and_tokenizer(model_config)
+    data_config = DataConfig()
+    inference_config = replace(InferenceConfig(),
+                               adapter_model_id=args.adapter,
+                               adapter_subfolder=args.subfolder,
+                               batch_size=args.batch_size,
+                               num_generations=1)
+    model, tokenizer = load_for_inference(inference_config)
     _, eval_dataset = prepare_data(args.dataset,
                                    data_config,
                                    tokenizer,
                                    remove_columns=False)
-    predictions = generate_translations(
-        model,
-        tokenizer,
-        eval_dataset["english"],
-        data_config.system_prompt,
-    )
+    if args.limit:
+        eval_dataset = eval_dataset.select(
+            range(min(args.limit, len(eval_dataset))))
+    predictions = [
+        candidates[0]
+        for _, candidates in translate(model, tokenizer,
+                                       eval_dataset["english"],
+                                       data_config.system_prompt,
+                                       inference_config)
+    ]
     metrics = compute_translation_metrics(predictions, eval_dataset["darija"])
-    print(metrics)
+    print(f"{len(predictions)} sentences: {metrics}")
 
 
 def select_source_rows(dataset_name: str, data_config: DataConfig,
@@ -243,6 +252,19 @@ def main():
     eval_parser.add_argument(
         "--dataset",
         default="atlasia/english-to-darija-arabic-script-formatted")
+    eval_parser.add_argument("--adapter",
+                             default=InferenceConfig.adapter_model_id)
+    eval_parser.add_argument("--subfolder",
+                             default=None,
+                             help="adapter subfolder, e.g. last-checkpoint")
+    eval_parser.add_argument("--batch-size",
+                             type=int,
+                             default=InferenceConfig.batch_size)
+    eval_parser.add_argument("--limit",
+                             type=int,
+                             default=1000,
+                             help="sentences from the held-out split; "
+                             "0 evaluates all of it")
     eval_parser.set_defaults(func=run_evaluate)
 
     translate_parser = subparsers.add_parser(
