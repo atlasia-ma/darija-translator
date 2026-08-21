@@ -14,11 +14,13 @@ from darija_translator.config import (
 )
 from darija_translator.corpus import (
     cap_repeated_openings,
+    contains_phrase,
     decontaminate,
     dedupe,
     detokenise,
     length_bucket,
     parse_source,
+    phrase_pattern,
     stratified_sample,
     to_seen_set,
     within_length,
@@ -147,6 +149,22 @@ def run_generate_dpo(args):
         print(f"pushed {len(pairs)} pairs to {args.push_to_hub}")
 
 
+def open_dataset(source: str, config: str | None = None, split: str = "train"):
+    """A Hub dataset id, or a local file in one of the obvious formats."""
+    if not os.path.exists(source):
+        # multi-config corpora (language pairs, domains) need the config name
+        return load_dataset(source, config, split=split)
+    builder = {
+        ".jsonl": "json",
+        ".json": "json",
+        ".csv": "csv",
+        ".tsv": "csv",
+        ".parquet": "parquet",
+        ".txt": "text",
+    }.get(os.path.splitext(source)[1], "text")
+    return load_dataset(builder, data_files=source, split="train")
+
+
 def load_english_rows(source: str,
                       split: str,
                       column: str,
@@ -154,19 +172,7 @@ def load_english_rows(source: str,
                       limit: int | None,
                       config: str | None = None):
     """An English corpus with no darija labels: a Hub dataset or a local file."""
-    if os.path.exists(source):
-        builder = {
-            ".jsonl": "json",
-            ".json": "json",
-            ".csv": "csv",
-            ".tsv": "csv",
-            ".parquet": "parquet",
-            ".txt": "text",
-        }.get(os.path.splitext(source)[1], "text")
-        dataset = load_dataset(builder, data_files=source, split="train")
-    else:
-        # multi-config corpora (language pairs, domains) need the config name
-        dataset = load_dataset(source, config, split=split)
+    dataset = open_dataset(source, config, split)
 
     if column not in dataset.column_names:
         raise SystemExit(
@@ -232,9 +238,27 @@ def run_translate(args):
         print(f"pushed {len(translations)} rows to {args.push_to_hub}")
 
 
-def texts_from_source(spec, split: str, config: CorpusConfig) -> list[str]:
+def load_phrases(source: str, split: str) -> list[str]:
+    """A phrase list, from a local file of one per line or a dataset column."""
+    if os.path.exists(source) and source.endswith(".txt"):
+        with open(source, encoding="utf-8") as handle:
+            return [line.strip() for line in handle if line.strip()]
+    spec = parse_source(source)
+    dataset = open_dataset(spec.dataset, spec.config, split)
+    column = spec.column if spec.column != "english" else dataset.column_names[
+        0]
+    if column not in dataset.column_names:
+        raise SystemExit(f"no {column!r} column in {spec.dataset}; "
+                         f"found {dataset.column_names}")
+    return [str(value) for value in dataset[column] if value]
+
+
+def texts_from_source(spec,
+                      split: str,
+                      config: CorpusConfig,
+                      phrases=None) -> list[str]:
     """Everything usable one source contributes, before the global mix."""
-    dataset = load_dataset(spec.dataset, spec.config, split=split)
+    dataset = open_dataset(spec.dataset, spec.config, split)
     if spec.column not in dataset.column_names:
         raise SystemExit(f"no {spec.column!r} column in {spec.dataset}; "
                          f"found {dataset.column_names}")
@@ -248,6 +272,8 @@ def texts_from_source(spec, split: str, config: CorpusConfig) -> list[str]:
 
     # token-list columns (idiom corpora ship these) become plain sentences
     texts = [detokenise(value) for value in dataset[spec.column]]
+    if phrases is not None:
+        texts = [text for text in texts if contains_phrase(text, phrases)]
     texts = dedupe(texts)
     texts = [text for text in texts if within_length(text, config)]
     texts = cap_repeated_openings(texts, config)
@@ -256,9 +282,13 @@ def texts_from_source(spec, split: str, config: CorpusConfig) -> list[str]:
     return texts
 
 
-def excluded_texts(dataset_name: str, column: str) -> set:
-    print(f"loading {dataset_name} to decontaminate against")
-    dataset = load_dataset(dataset_name, split="train")
+def excluded_texts(source: str, column: str) -> set:
+    """What not to repeat: SFT training data, or a corpus already built."""
+    print(f"loading {source} to decontaminate against")
+    dataset = open_dataset(source)
+    if column not in dataset.column_names:
+        raise SystemExit(f"no {column!r} column in {source}; "
+                         f"found {dataset.column_names}")
     return to_seen_set(dataset[column])
 
 
@@ -280,10 +310,19 @@ def run_prepare_corpus(args):
                      max_words=args.max_words,
                      output_path=args.out)
 
+    phrases = None
+    if args.must_contain:
+        phrase_list = load_phrases(args.must_contain, args.split)
+        phrases = phrase_pattern(phrase_list)
+        if phrases is None:
+            raise SystemExit(f"no usable phrases in {args.must_contain}")
+        print(f"keeping only sentences containing one of "
+              f"{len(phrase_list)} phrases")
+
     collected = []
     for raw in args.source:
         spec = parse_source(raw)
-        texts = texts_from_source(spec, args.split, config)
+        texts = texts_from_source(spec, args.split, config, phrases)
         print(f"{spec.dataset}: {len(texts)} sentences")
         collected.extend((text, spec.dataset) for text in texts)
 
@@ -372,6 +411,12 @@ def main():
     corpus_parser.add_argument("--no-decontaminate",
                                action="store_true",
                                help="skip the overlap check")
+    corpus_parser.add_argument(
+        "--must-contain",
+        default=None,
+        metavar="FILE_OR_DATASET:CONFIG:COLUMN",
+        help="keep only sentences containing one of these phrases, e.g. "
+        "Gooogr/pie_idioms::idiom to select idiom-bearing sentences")
     corpus_parser.add_argument("--out", default=CorpusConfig.output_path)
     corpus_parser.set_defaults(func=run_prepare_corpus)
 
