@@ -142,3 +142,29 @@ class PreferenceConfig:
         _require(0 <= self.max_chrf_similarity <= 100,
                  "max_chrf_similarity must be between 0 and 100")
         _require(self.output_path, "output_path must not be empty")
+
+
+@dataclass(frozen=True)
+class CorpusConfig:
+    """Assembling one English corpus out of several sources."""
+    min_words: int = 3
+    max_words: int = 40
+    # upper edges of the length bands sampled evenly, so the corpus is not
+    # all five-word phrases or all long instructions
+    length_buckets: tuple = (5, 10, 20)
+    # how often one opening ("Sami told Layla...") may repeat, for vocabulary
+    max_repeated_openings: int = 3
+    seed: int = SEED
+    output_path: str = "data/corpus.jsonl"
+
+    def __post_init__(self):
+        _require(self.min_words > 0, "min_words must be positive")
+        _require(self.min_words <= self.max_words,
+                 "min_words must not exceed max_words")
+        _require(self.max_repeated_openings > 0,
+                 "max_repeated_openings must be positive")
+        _require(self.length_buckets, "length_buckets must not be empty")
+        _require(
+            list(self.length_buckets) == sorted(set(self.length_buckets)),
+            "length_buckets must be increasing and unique")
+        _require(self.output_path, "output_path must not be empty")
