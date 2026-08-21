@@ -135,8 +135,12 @@ def run_generate_dpo(args):
         print(f"pushed {len(pairs)} pairs to {args.push_to_hub}")
 
 
-def load_english_rows(source: str, split: str, column: str, start: int,
-                      limit: int | None):
+def load_english_rows(source: str,
+                      split: str,
+                      column: str,
+                      start: int,
+                      limit: int | None,
+                      config: str | None = None):
     """An English corpus with no darija labels: a Hub dataset or a local file."""
     if os.path.exists(source):
         builder = {
@@ -149,7 +153,8 @@ def load_english_rows(source: str, split: str, column: str, start: int,
         }.get(os.path.splitext(source)[1], "text")
         dataset = load_dataset(builder, data_files=source, split="train")
     else:
-        dataset = load_dataset(source, split=split)
+        # multi-config corpora (language pairs, domains) need the config name
+        dataset = load_dataset(source, config, split=split)
 
     if column not in dataset.column_names:
         raise SystemExit(
@@ -181,7 +186,7 @@ def run_translate(args):
             print(f"resuming after row {stopped_at}")
 
     dataset = load_english_rows(args.dataset, args.split, args.column, start,
-                                args.limit)
+                                args.limit, args.config)
     sources = dataset[args.column]
     if not sources:
         print("nothing left to translate")
@@ -252,6 +257,11 @@ def main():
         required=True,
         help="Hub dataset id, or a local .jsonl/.csv/.parquet/.txt file")
     translate_parser.add_argument("--split", default="train")
+    translate_parser.add_argument(
+        "--config",
+        default=None,
+        help="config name, for datasets that have several "
+        "(e.g. en-de for a language-pair corpus)")
     translate_parser.add_argument("--column",
                                   default="english",
                                   help="column holding the English text")

@@ -66,7 +66,9 @@ a human pass.
     uv run darija-translator translate --dataset my-corpus.jsonl --column english
 
 `--dataset` takes a Hub dataset id or a local `.jsonl` / `.csv` / `.parquet` /
-`.txt` file. Nothing is filtered except empty generations — with no reference
+`.txt` file. Multi-config corpora need `--config`:
+
+    uv run darija-translator translate         --dataset sentence-transformers/parallel-sentences-tatoeba         --config en-de --column english --limit 30000 Nothing is filtered except empty generations — with no reference
 there is nothing to score against, so every row is kept as-is. Each record
 carries the prompt, the translation, every candidate, and which adapter and
 decoding produced it, so the pairing pass can join against it later.
