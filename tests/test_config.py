@@ -3,6 +3,7 @@ import dataclasses
 import pytest
 
 from darija_translator.config import (
+    CorpusConfig,
     DataConfig,
     InferenceConfig,
     ModelConfig,
@@ -11,7 +12,8 @@ from darija_translator.config import (
 )
 
 ALL_CONFIGS = [
-    DataConfig, ModelConfig, TrainConfig, InferenceConfig, PreferenceConfig
+    DataConfig, ModelConfig, TrainConfig, InferenceConfig, PreferenceConfig,
+    CorpusConfig
 ]
 
 
@@ -181,3 +183,42 @@ def test_greedy_inference_ignores_the_sampling_parameters():
 def test_preference_config_rejects_invalid_values(kwargs):
     with pytest.raises(ValueError):
         PreferenceConfig(**kwargs)
+
+
+def test_corpus_config_defaults():
+    cfg = CorpusConfig()
+    assert cfg.min_words == 3
+    assert cfg.max_words == 40
+    assert cfg.length_buckets == (5, 10, 20)
+    assert cfg.max_repeated_openings == 3
+    assert cfg.output_path == "data/corpus.jsonl"
+
+
+def test_corpus_config_shares_the_pipeline_seed():
+    assert CorpusConfig().seed == DataConfig().seed
+
+
+@pytest.mark.parametrize("kwargs", [
+    {
+        "min_words": 0
+    },
+    {
+        "min_words": 50,
+        "max_words": 40
+    },
+    {
+        "max_repeated_openings": 0
+    },
+    {
+        "length_buckets": ()
+    },
+    {
+        "length_buckets": (10, 5)
+    },
+    {
+        "output_path": ""
+    },
+])
+def test_corpus_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ValueError):
+        CorpusConfig(**kwargs)
