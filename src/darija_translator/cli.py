@@ -11,13 +11,7 @@ from darija_translator.config import (
     PreferenceConfig,
     TrainConfig,
 )
-from darija_translator.data import (
-    format_conversations,
-    is_darija_script,
-    is_within_length,
-    split_dataset,
-    to_conversations,
-)
+from darija_translator.data import split_dataset
 from darija_translator.evaluate import compute_translation_metrics
 from darija_translator.inference import load_for_inference, to_generation_record, translate
 from darija_translator.jsonl import (
@@ -27,27 +21,10 @@ from darija_translator.jsonl import (
 )
 from darija_translator.preference import generate_preference_pairs
 from darija_translator.model import attach_lora, load_model_and_tokenizer
-from darija_translator.train import build_trainer, save_model
+from darija_translator.train import build_trainer, prepare_data, save_model
 from dotenv import load_dotenv
 
 load_dotenv()
-
-
-def prepare_data(dataset_name: str,
-                 data_config: DataConfig,
-                 tokenizer,
-                 remove_columns: bool = True) -> tuple:
-    dataset = load_dataset(dataset_name, split="train")
-    # dataset = dataset.filter(is_darija_script)
-    # dataset = dataset.map(lambda b: to_conversations(b, data_config),
-    #                       batched=True)
-    # dataset = dataset.map(lambda b: format_conversations(b, tokenizer),
-    #                       batched=True)
-    # dataset = dataset.filter(lambda ex: is_within_length(ex, data_config))
-    if remove_columns:
-        dataset = dataset.remove_columns(
-            [c for c in dataset.column_names if c != "text"])
-    return split_dataset(dataset, data_config)
 
 
 def run_train(args):
