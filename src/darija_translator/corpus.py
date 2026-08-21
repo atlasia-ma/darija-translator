@@ -4,6 +4,7 @@ Diversity is the point: the model is weakest on registers its training set
 was thin on, so length bands are sampled evenly and one sentence pattern is
 not allowed to dominate.
 """
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from random import Random
@@ -28,6 +29,17 @@ def normalise(text: str) -> str:
 
 def word_count(text: str) -> int:
     return len(normalise(text).split())
+
+
+def detokenise(value) -> str:
+    """Idiom corpora ship token lists; "day ." and "It 's" are not English."""
+    if not isinstance(value, list):
+        return normalise(value)
+    text = " ".join(str(token) for token in value)
+    text = re.sub(r"\s+([.,!?;:%)\]}])", r"\1", text)
+    text = re.sub(r"([([{])\s+", r"\1", text)
+    text = re.sub(r"\s+('(?:s|re|ve|ll|d|m|t)\b|n't\b)", r"\1", text)
+    return normalise(text)
 
 
 def within_length(text: str, config: CorpusConfig) -> bool:
