@@ -140,9 +140,11 @@ def test_train_config_rejects_invalid_values(kwargs):
         "num_generations": 0
     },
     {
+        "do_sample": True,
         "temperature": 0
     },
     {
+        "do_sample": True,
         "top_p": 1.5
     },
     {
@@ -154,8 +156,13 @@ def test_inference_config_rejects_invalid_values(kwargs):
         InferenceConfig(**kwargs)
 
 
+def test_inference_decodes_greedily_by_default():
+    # greedy is what the edge device will run, so it is what we generate with
+    assert InferenceConfig().do_sample is False
+
+
 def test_greedy_inference_ignores_the_sampling_parameters():
-    config = InferenceConfig(do_sample=False, temperature=0.0)
+    config = InferenceConfig(temperature=0.0)
 
     assert config.do_sample is False
 
