@@ -9,9 +9,8 @@ Drops rows that are bad for reasons unrelated to translation quality: empty
 output, the English copied back, Latin script, repetition loops, runaway length
 and duplicate sources. Wrong translations are kept, since those are the point.
 
-The output keeps three columns -- english, generated, source -- where source
-comes from the corpus file the sentences were drawn from. The prompt is
-rebuildable from english plus the system prompt; which adapter and decoding
+The output keeps prompt, english, generated and source, where source comes
+from the corpus file the sentences were drawn from. Which adapter and decoding
 produced the text belongs in the dataset card.
 """
 import argparse
@@ -21,7 +20,9 @@ from collections import Counter
 
 ARABIC = re.compile("[\u0600-\u06FF\u0750-\u077F]")
 
-COLUMNS = ("english", "generated", "source")
+COLUMNS = ("prompt", "english", "generated", "source")
+
+SYSTEM_PROMPT = "You are a professional English to Darija translator."
 
 
 def normalise(text: str) -> str:
@@ -61,6 +62,22 @@ def rejection_reason(record: dict, args) -> str | None:
     return None
 
 
+def prompt_for(record: dict, english: str) -> list[dict]:
+    """Kept as generated; rebuilt only if an older file lacks the column."""
+    if record.get("prompt"):
+        return record["prompt"]
+    return [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": english
+        },
+    ]
+
+
 def read_records(path: str) -> list[dict]:
     with open(path, encoding="utf-8") as handle:
         return [json.loads(line) for line in handle if line.strip()]
@@ -91,6 +108,7 @@ def filter_records(records: list[dict], sources: dict,
             dropped[reason] += 1
             continue
         kept.append({
+            "prompt": prompt_for(record, english),
             "english": english,
             "generated": normalise(record["generated"]),
             "source": sources.get(key, "unknown"),
