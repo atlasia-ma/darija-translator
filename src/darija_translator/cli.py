@@ -1,5 +1,4 @@
 import argparse
-import os
 from dataclasses import replace
 
 from datasets import Dataset, load_dataset
@@ -20,11 +19,12 @@ from darija_translator.data import (
 )
 from darija_translator.evaluate import compute_translation_metrics, generate_translations
 from darija_translator.inference import load_for_inference
-from darija_translator.preference import (
-    generate_preference_pairs,
+from darija_translator.jsonl import (
     last_row_index,
+    open_for_records,
     write_record,
 )
+from darija_translator.preference import generate_preference_pairs
 from darija_translator.model import attach_lora, load_model_and_tokenizer
 from darija_translator.train import build_trainer, save_model
 from dotenv import load_dotenv
@@ -126,14 +126,9 @@ def run_generate_dpo(args):
 
     model, tokenizer = load_for_inference(inference_config)
 
-    directory = os.path.dirname(preference_config.output_path)
-    if directory:
-        os.makedirs(directory, exist_ok=True)
-    mode = "a" if args.resume and os.path.exists(
-        preference_config.output_path) else "w"
-
     kept = 0
-    with open(preference_config.output_path, mode, encoding="utf-8") as handle:
+    with open_for_records(preference_config.output_path,
+                          args.resume) as handle:
         for record in generate_preference_pairs(model, tokenizer, rows,
                                                 data_config, inference_config,
                                                 preference_config,
