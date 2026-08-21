@@ -64,12 +64,18 @@ Mixes several English sources into one file for `translate`. Diversity is the
 point — the model is weakest on registers the SFT set was thin on, so length
 bands are sampled evenly and no single sentence pattern is allowed to dominate.
 
-    uv run darija-translator prepare-corpus         --source sentence-transformers/parallel-sentences-opensubtitles:en-de:english:25000         --source sentence-transformers/parallel-sentences-tatoeba:en-de:english:25000         --source sentence-transformers/parallel-sentences-talks:en-de:english:25000         --source Gooogr/pie_idioms::tokens:8000:is_pie=true         --total 70000 --out data/corpus.jsonl
+    uv run darija-translator prepare-corpus         --source sentence-transformers/parallel-sentences-opus-100:en-ar:english:50000         --source sentence-transformers/parallel-sentences-tatoeba:en-de:english:25000         --source sentence-transformers/parallel-sentences-global-voices:en-ar:english:20000         --source Gooogr/pie_idioms::tokens:10000:is_pie=true         --total 70000 --out data/corpus.jsonl
 
-Those four cover different ground on purpose: subtitles for spoken register and
-questions, Tatoeba for everyday sentences, TED talks for longer prose and
-wider vocabulary, and PIE for figurative language. Sources are capped above the
-total so the length-band sampling has room to balance them.
+These are English→X parallel corpora with the other side discarded: sentences
+written to be translated. They cover different ground on purpose — OPUS-100 is
+itself a balanced mix across dozens of corpora (short to medium, many
+questions), Tatoeba is clean everyday sentences, Global Voices is
+human-translated journalism for the long band, and PIE supplies figurative
+language. The `en-ar` configs are the English that someone chose to translate
+into Arabic, which sits closer to Darija's world than `en-de`.
+
+Sources are capped well above `--total` so the length-band sampling has room
+to balance them; roughly 1.5x the target works.
 
 Each `--source` is `dataset[:config[:column[:count[:field=value]]]]`; leave a
 segment empty to skip it. The trailing `field=value` filters rows — above, it
