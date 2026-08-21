@@ -4,11 +4,10 @@ import os
 
 from datasets import load_dataset
 
-from darija_translator.model import attach_lora, load_model_and_tokenizer
 from darija_translator.data import split_dataset
 from trl import SFTConfig, SFTTrainer
 
-from darija_translator.config import DataConfig, ModelConfig, TrainConfig
+from darija_translator.config import DataConfig, TrainConfig
 
 
 def prepare_data(dataset_name: str,
@@ -81,73 +80,3 @@ def build_trainer(model, tokenizer, train_dataset, eval_dataset,
 def save_model(model, tokenizer, config: TrainConfig):
     model.save_pretrained(config.output_dir)
     tokenizer.save_pretrained(config.output_dir)
-
-
-if __name__ == "__main__":
-    data_config, model_config, train_config = DataConfig(), ModelConfig(
-    ), TrainConfig()
-    model, tokenizer = load_model_and_tokenizer(model_config)
-    model = attach_lora(model, model_config)
-    train_dataset, eval_dataset = prepare_data(
-        "atlasia/english-to-darija-arabic-script-formatted", data_config,
-        tokenizer)
-    trainer = build_trainer(model, tokenizer, train_dataset, eval_dataset,
-                            train_config)
-    for i in range(min(10, len(trainer.train_dataset))):
-        row = trainer.train_dataset[i]
-        print(row)
-        input_ids = row["input_ids"]
-        labels = row["labels"]
-        print(f"\n--- row {i} ---")
-        print(f"input_ids: {input_ids}")
-        print(f"labels: {labels}")
-        print(f"decoded input: {tokenizer.decode(input_ids)}")
-        print(
-            f"decoded labels: {tokenizer.decode([lab for lab in labels if lab != -100])}"
-        )
-
-# # 1. Run your training
-# trainer.train()
-
-# # 2. Push the highly optimized LoRA adapter to your repo
-# model.push_to_hub("your-username/darija-translator", token=True)
-# tokenizer.push_to_hub("your-username/darija-translator", token=True)
-
-# # Merges LoRA weights back into the base structure and pushes the whole thing
-# model.push_to_hub_merged(
-#     "your-username/darija-translator-merged",
-#     tokenizer,
-#     save_method="merged_16bit"
-# )
-# from unsloth import FastLanguageModel
-
-# max_seq_length = 2048
-# dtype = None # None for auto detection. Float16 for Tesla T4/V100, Bfloat16 for Ampere+
-# load_in_4bit = True # Use True if you want to keep VRAM footprint low
-
-# # 1. Load the base model and tokenizer
-# model, tokenizer = FastLanguageModel.from_pretrained(
-#     model_name = "unsloth/llama-3-8b-Instruct", # Use whatever base model you started with
-#     max_seq_length = max_seq_length,
-#     dtype = dtype,
-#     load_in_4bit = load_in_4bit,
-# )
-
-# # 2. Layer your tiny checkpoint adapter right on top from the Hugging Face Hub
-# # You can reference specific checkpoint folders directly using the 'subfolder' argument!
-# model = FastLanguageModel.for_inference(model)
-# model.load_adapter(
-#     "your-username/darija-translator",
-#     subfolder="checkpoint-400" # Change this to checkpoint-800, checkpoint-1200, etc.
-# )
-
-# # 3. Test your translator!
-# inputs = tokenizer(
-#     [
-#         "<|im_start|>system\nYou are a professional English to Darija translator.<|im_end|>\n<|im_start|>user\nHow are you doing today?<|im_end|>\n<|im_start|>assistant\n"
-#     ],
-#     return_tensors = "pt"
-# ).to("cuda")
-
-# outputs = model.generate(**inputs, max_new_tokens = 64, use_cache = True)
-# print(tokenizer.batch_decode(outputs, skip_special_tokens=True)[0])
